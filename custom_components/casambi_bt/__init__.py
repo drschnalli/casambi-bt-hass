@@ -466,6 +466,178 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         _LOGGER.info("Registered dump_classic_diagnostics service")
 
 
+    # Register dump_diagnostics service if not already registered
+    if not hass.services.has_service(DOMAIN, "dump_diagnostics"):
+        async def handle_dump_diagnostics(call: ServiceCall) -> dict:
+            """Return protocol, cache, BLE and entity diagnostics for all Casambi networks."""
+            entry_id = call.data.get("entry_id")
+            include_network_config = bool(call.data.get("include_network_config", False))
+            include_units = bool(call.data.get("include_units", True))
+            include_raw_client = bool(call.data.get("include_raw_client", True))
+            log_output = bool(call.data.get("log_output", True))
+
+            def _safe_value(value):
+                """Convert arbitrary values to JSON-safe diagnostic values."""
+                if value is None or isinstance(value, (str, int, float, bool)):
+                    return value
+                if isinstance(value, (bytes, bytearray)):
+                    return value.hex()
+                if isinstance(value, dict):
+                    return {str(k): _safe_value(v) for k, v in value.items()}
+                if isinstance(value, (list, tuple, set)):
+                    return [_safe_value(v) for v in value]
+                return str(value)
+
+            def _unit_diag(unit) -> dict:
+                """Collect safe unit diagnostics."""
+                state = getattr(unit, "state", None)
+                state_dict = None
+                if state is not None:
+                    as_dict = getattr(state, "as_dict", None)
+                    if callable(as_dict):
+                        try:
+                            state_dict = as_dict()
+                        except Exception as err:  # pragma: no cover - diagnostics only
+                            state_dict = {"error": str(err)}
+                    else:
+                        state_dict = str(state)
+
+                unit_type = getattr(unit, "unitType", None)
+                return {
+                    "device_id": getattr(unit, "deviceId", None),
+                    "uuid": getattr(unit, "uuid", None),
+                    "name": getattr(unit, "name", None),
+                    "online": getattr(unit, "online", None),
+                    "firmware_version": getattr(unit, "firmwareVersion", None),
+                    "security_key_present": getattr(unit, "securityKey", None) is not None,
+                    "manufacturer": getattr(unit_type, "manufacturer", None),
+                    "model": getattr(unit_type, "model", None),
+                    "mode": getattr(unit_type, "mode", None),
+                    "state": _safe_value(state_dict),
+                }
+
+            def _collect_entry_diag(entry, casa_api: CasambiApi) -> dict:
+                """Collect diagnostics for one config entry."""
+                casa = casa_api.casa
+                client = getattr(casa, "_casaClient", None)
+                network = getattr(casa, "_casaNetwork", None)
+                protocol_mode = getattr(client, "protocolMode", None)
+                bluetooth_device = bluetooth.async_ble_device_from_address(
+                    hass, casa_api.address, connectable=True
+                )
+
+                diag = {
+                    "entry_id": entry.entry_id,
+                    "title": entry.title,
+                    "state": str(entry.state),
+                    "address": casa_api.address,
+                    "available": casa_api.available,
+                    "reconnecting": casa_api.reconnecting,
+                    "assumed_available": casa_api.assumed_available,
+                    "protocol_version": casa_api.protocol_version,
+                    "is_classic_network": casa_api.is_classic_network,
+                    "network_name": getattr(casa, "networkName", None),
+                    "network_id": getattr(casa, "networkId", None),
+                    "counts": {
+                        "units": len(getattr(casa, "units", []) or []),
+                        "groups": len(getattr(casa, "groups", []) or []),
+                        "scenes": len(getattr(casa, "scenes", []) or []),
+                        "registered_unit_callbacks": sum(
+                            len(v) for v in casa_api._callback_map.values()
+                        ),
+                        "switch_event_callbacks": len(casa_api._switch_event_callbacks),
+                    },
+                    "bluetooth": {
+                        "device_available": bluetooth_device is not None,
+                        "device_name": getattr(bluetooth_device, "name", None),
+                        "device_address": getattr(bluetooth_device, "address", None),
+                    },
+                    "client": {
+                        "present": client is not None,
+                        "connected": getattr(casa, "connected", None),
+                        "connection_state": str(getattr(client, "_connectionState", None)),
+                        "protocol_mode": getattr(protocol_mode, "name", None),
+                        "device_protocol_version": getattr(client, "_deviceProtocolVersion", None),
+                        "data_char_uuid": getattr(client, "_dataCharUuid", None),
+                        "gatt_connected": bool(
+                            getattr(getattr(client, "_gattClient", None), "is_connected", False)
+                        ),
+                    },
+                }
+
+                if include_raw_client and client is not None:
+                    diag["client"].update(
+                        {
+                            "classic_hash_source": getattr(client, "_classicHashSource", None),
+                            "classic_header_mode": getattr(client, "_classicHeaderMode", None),
+                            "classic_tx_uuid": getattr(client, "_classicTxCharUuid", None),
+                            "classic_notify_uuids": sorted(
+                                getattr(client, "_classicNotifyCharUuids", set()) or []
+                            ),
+                            "classic_rx_stats": {
+                                "frames": getattr(client, "_classicRxFrames", None),
+                                "verified": getattr(client, "_classicRxVerified", None),
+                                "unverifiable": getattr(client, "_classicRxUnverifiable", None),
+                                "parse_fail": getattr(client, "_classicRxParseFail", None),
+                                "type6_unitstate": getattr(client, "_classicRxType6", None),
+                                "type7_switch": getattr(client, "_classicRxType7", None),
+                                "type9_netconf": getattr(client, "_classicRxType9", None),
+                            },
+                        }
+                    )
+
+                if include_units:
+                    diag["units"] = [_unit_diag(u) for u in getattr(casa, "units", []) or []]
+                    diag["groups"] = [
+                        {
+                            "group_id": getattr(g, "groudId", None),
+                            "name": getattr(g, "name", None),
+                            "unit_count": len(getattr(g, "units", []) or []),
+                        }
+                        for g in getattr(casa, "groups", []) or []
+                    ]
+                    diag["scenes"] = [
+                        {
+                            "scene_id": getattr(s, "sceneId", None),
+                            "name": getattr(s, "name", None),
+                        }
+                        for s in getattr(casa, "scenes", []) or []
+                    ]
+
+                if include_network_config:
+                    diag["raw_network_data"] = _safe_value(getattr(casa, "rawNetworkData", None))
+
+                return _safe_value(diag)
+
+            entries = hass.config_entries.async_entries(DOMAIN)
+            selected = []
+            for entry in entries:
+                if entry_id and entry.entry_id != entry_id:
+                    continue
+                casa_api = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+                if casa_api is not None:
+                    selected.append((entry, casa_api))
+
+            if not selected:
+                raise ValueError("No matching Casambi connection available")
+
+            result = {
+                "domain": DOMAIN,
+                "entries": [_collect_entry_diag(entry, api) for entry, api in selected],
+            }
+            if log_output:
+                _LOGGER.warning("[CASAMBI_DEBUG_DUMP] %s", result)
+            return {"diagnostics": result}
+
+        hass.services.async_register(
+            DOMAIN,
+            "dump_diagnostics",
+            handle_dump_diagnostics,
+            supports_response="optional",
+        )
+        _LOGGER.info("Registered dump_diagnostics service")
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
