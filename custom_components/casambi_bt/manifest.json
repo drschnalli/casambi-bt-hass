@@ -13,12 +13,22 @@
       "connectable": true
     }
   ],
-  "codeowners": ["@lkempf"],
+  "codeowners": [
+    "@drschnalli"
+  ],
   "config_flow": true,
-  "dependencies": ["bluetooth_adapters"],
-  "documentation": "https://github.com/lkempf/casambi-bt-hass",
+  "dependencies": [
+    "bluetooth_adapters"
+  ],
+  "documentation": "https://github.com/drschnalli/casambi-bt-hass",
   "integration_type": "hub",
   "iot_class": "local_push",
-  "requirements": ["casambi-bt-revamped==0.4.2.dev7"],
-  "version": "1.9.0.dev7"
+  "requirements": [
+    "casambi-bt-revamped@git+https://github.com/drschnalli/casambi-bt-revamped.git@v0.4.2.dev7"
+  ],
+  "version": "1.9.0.dev7",
+  "issue_tracker": "https://github.com/drschnalli/casambi-bt-hass/issues",
+  "loggers": [
+    "CasambiBt"
+  ]
 }
