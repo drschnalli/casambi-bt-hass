@@ -24,9 +24,9 @@
   "integration_type": "hub",
   "iot_class": "local_push",
   "requirements": [
-    "casambi-bt-revamped@git+https://github.com/drschnalli/casambi-bt-revamped.git@v0.4.2.dev7"
+    "casambi-bt-revamped@git+https://github.com/drschnalli/casambi-bt-revamped.git@v0.4.2.dev8"
   ],
-  "version": "1.9.0.dev7",
+  "version": "1.9.0.dev8",
   "issue_tracker": "https://github.com/drschnalli/casambi-bt-hass/issues",
   "loggers": [
     "CasambiBt"
