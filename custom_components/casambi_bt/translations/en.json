@@ -1,0 +1,35 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Device is already configured",
+            "bluetooth_error": "Bluetooth doesn't seem to work properly.",
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
+            "reauth_successful": "Re-authentication was successful",
+            "unknown": "Unexpected error"
+        },
+        "error": {
+            "cannot_connect": "Failed to connect",
+            "invalid_address": "The bluetooth MAC address of the network is invalid.",
+            "invalid_auth": "Invalid authentication",
+            "unknown": "Unexpected error"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "address": "Bluetooth MAC address",
+                    "import_groups": "Import groups",
+                    "password": "Password"
+                },
+                "title": "Configure your Casambi network",
+                "description": "Find the bluetooth MAC address (Network ID) in the luminair details of your casambi app."
+            },
+            "reauth_confirm": {
+                "data": {
+                    "password": "Password"
+                },
+                "title": "Please verify your network password."
+            }
+        }
+    }
+}
