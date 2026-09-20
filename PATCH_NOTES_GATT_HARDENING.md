@@ -1,3 +1,20 @@
+# Casambi BT dev13 - dependency refresh and timezone-safe session expiry
+
+Versionen:
+- casambi-bt-revamped: 0.4.2.dev13
+- casambi-bt-hass: 1.9.0.dev13
+
+Neu in dev13:
+- Die Integration verwendet den expliziten Tag `v0.4.2.dev13`.
+- Dadurch verwirft Home Assistant eine eventuell noch gecachte alte CasambiBt-Installation und lädt den UTC-sicheren Bibliotheksstand neu.
+- Die manifest-Version wurde gemeinsam mit der Dependency erhöht; ein direkter Commit-Pin wird nicht verwendet.
+
+Verifiziert:
+- Der Tag lässt sich mit pip als Wheel bauen.
+- Der Zeitzonen-Regressionstest deckt naive, UTC-aware und offset-aware Ablaufzeiten ab.
+
+---
+
 # Casambi BT dev12 - expanded EVO pre-auth packet tolerance
 
 Versionen:
