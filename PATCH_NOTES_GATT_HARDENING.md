@@ -1,3 +1,16 @@
+# Casambi BT dev14 - stale ESPHome GATT cleanup
+
+Versionen:
+- casambi-bt-revamped: 0.4.2.dev14
+- casambi-bt-hass: 1.9.0.dev14
+
+Neu in dev14:
+- Die Integration verwendet `casambi-bt-revamped@v0.4.2.dev14`.
+- Der Bibliotheksstand räumt verwaiste ESPHome-GATT-Slots auch bei lokalem `is_connected=False` aktiv auf.
+- Dadurch wird der beobachtete Zustand `not in allocated list []` beim nächsten Retry bereinigt.
+
+---
+
 # Casambi BT dev13 - dependency refresh and timezone-safe session expiry
 
 Versionen:
